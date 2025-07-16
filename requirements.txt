@@ -1,0 +1,5 @@
+aiohttp
+aiohttp-socks
+PyQt5
+requests
+asyncio
